@@ -1,0 +1,7 @@
+{
+    "python.defaultInterpreterPath": "${command:python.interpreterPath}",
+    "python.analysis.extraPaths": [],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic"
+}
+
