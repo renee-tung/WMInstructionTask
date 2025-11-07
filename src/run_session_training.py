@@ -16,7 +16,7 @@ def get_instruction_text_for_trial(task_struct, t_i):
     """Helper function to get instruction text for a trial."""
     category = task_struct['trial_categories'][t_i]
     axis = task_struct['trial_axis'][t_i]
-    trial_axis_name = task_struct['category_and_axis'][1][category-1][axis-1]
+    trial_axis_name = task_struct['category_and_axis'][1][category][axis]
     return get_instruction_text(
         category, trial_axis_name,
         task_struct['anti_task'][t_i],
@@ -384,7 +384,7 @@ def run_session_training(task_struct, disp_struct):
         core.wait(task_struct['ITI'])
         
         trial_struct_cell[t_i] = trial_struct
-        task_struct['trial_struct_cell'] = trial_struct_cell[t_i]
+        task_struct['trial_struct_cell'] = trial_struct_cell  # Save full array, not just current trial
         
         trial_end_time = core.getTime()
         task_struct['trial_time'][t_i] = trial_end_time - trial_start_time

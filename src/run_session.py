@@ -166,8 +166,41 @@ def run_session(task_struct, disp_struct):
         
         trial_struct['stim1_off_flip'] = win.flip()
         # Wait for inter-stimulus interval
-        core.wait(task_struct['ISI'])
+        core.wait(task_struct['ISI']) # want to double check what's on the screen here
         
+        
+        # Presenting second stimulus
+        stim2_position_trial = int(task_struct['stim2_position'][t_i])
+        stim2_rect = disp_struct['horizontal_rects'][stim2_position_trial - 1]
+        
+        # Load and display image
+        stim2_path = task_struct['trial_stims'][t_i][1]
+        stim2_image = visual.ImageStim(
+            win,
+            image=stim2_path,
+            pos=None,
+            size=(stim2_rect[2] - stim2_rect[0], stim2_rect[3] - stim2_rect[1])
+        )
+        stim2_image.setPos((stim2_rect[0] + stim2_rect[2])/2, (stim2_rect[1] + stim2_rect[3])/2)
+        stim2_image.draw()
+        
+        trial_struct['stim2_flip'] = win.flip()
+        
+        if task_struct['eye_link_mode']:
+            write_log_with_eyelink(task_struct, 'STIMULUS_ON', '')
+        
+        if not task_struct['debug']:
+            send_ttl(task_struct, 'STIMULUS_ON')
+        
+        # Wait for stimulus presentation
+        core.wait(task_struct['stim2_time'])
+        
+        if task_struct['eye_link_mode']:
+            write_log_with_eyelink(task_struct, 'STIMULUS_OFF', '')
+        
+        if not task_struct['debug']:
+            send_ttl(task_struct, 'STIMULUS_OFF')
+
         # Presenting second instruction (if required)
         if task_struct['trial_conditions'][t_i] == 2:
             plotted_text = get_instruction_text_for_trial(task_struct, t_i)
@@ -205,38 +238,6 @@ def run_session(task_struct, disp_struct):
             
             if not task_struct['debug']:
                 send_ttl(task_struct, 'INSTRUCTION_OFF')
-        
-        # Presenting second stimulus
-        stim2_position_trial = int(task_struct['stim2_position'][t_i])
-        stim2_rect = disp_struct['horizontal_rects'][stim2_position_trial - 1]
-        
-        # Load and display image
-        stim2_path = task_struct['trial_stims'][t_i][1]
-        stim2_image = visual.ImageStim(
-            win,
-            image=stim2_path,
-            pos=None,
-            size=(stim2_rect[2] - stim2_rect[0], stim2_rect[3] - stim2_rect[1])
-        )
-        stim2_image.setPos((stim2_rect[0] + stim2_rect[2])/2, (stim2_rect[1] + stim2_rect[3])/2)
-        stim2_image.draw()
-        
-        trial_struct['stim2_flip'] = win.flip()
-        
-        if task_struct['eye_link_mode']:
-            write_log_with_eyelink(task_struct, 'STIMULUS_ON', '')
-        
-        if not task_struct['debug']:
-            send_ttl(task_struct, 'STIMULUS_ON')
-        
-        # Wait for stimulus presentation
-        core.wait(task_struct['stim2_time'])
-        
-        if task_struct['eye_link_mode']:
-            write_log_with_eyelink(task_struct, 'STIMULUS_OFF', '')
-        
-        if not task_struct['debug']:
-            send_ttl(task_struct, 'STIMULUS_OFF')
         
         # Getting response
         # Plotting left/right frames
@@ -418,7 +419,7 @@ def run_session(task_struct, disp_struct):
         
         # Saving trial to struct
         trial_struct_cell[t_i] = trial_struct
-        task_struct['trial_struct_cell'] = trial_struct_cell[t_i]
+        task_struct['trial_struct_cell'] = trial_struct_cell  # Save full array, not just current trial
         
         trial_end_time = core.getTime()
         task_struct['trial_time'][t_i] = trial_end_time - trial_start_time
@@ -446,7 +447,7 @@ def get_instruction_text_for_trial(task_struct, t_i):
     """Helper function to get instruction text for a trial."""
     category = task_struct['trial_categories'][t_i]
     axis = task_struct['trial_axis'][t_i]
-    trial_axis_name = task_struct['category_and_axis'][1][category-1][axis-1]
+    trial_axis_name = task_struct['category_and_axis'][1][category][axis]
     return get_instruction_text(
         category, trial_axis_name,
         task_struct['anti_task'][t_i],

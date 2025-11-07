@@ -64,8 +64,8 @@ def init_task_training():
     category_and_axis = [category_names, axis_names]
     
     # Which of the two axes belonging to each category will be used in each trial
-    trial_categories = [2, 3]  # Only Cars and Faces for training
-    trial_axis = [1, 2]
+    trial_categories = [1, 2]  # Only Cars and Faces for training (0-indexed: 1=Cars, 2=Faces)
+    trial_axis = [0, 1]
     anti_task = [0, 1]
     equivalent_variant_id = [0, 1]
     
@@ -103,13 +103,13 @@ def init_task_training():
     
     # Filling trial cells with pair numbers
     pair_numbers = {}
-    for i in range(1, 3):
-        for j in range(1, 5):
-            pair_numbers[(i, j)] = list(range(1, 7)) * 4
+    for i in trial_axis:  # 2 axes
+        for j in trial_categories:  # Only Cars and Faces
+            pair_numbers[(i, j)] = list(range(6)) * 4  # 6 pairs (0-5) x 4 repetitions
     
     # Filling identical cells
     identical_trials = {}
-    for i, axes in enumerate(axis_names, 1):
+    for i, axes in enumerate(axis_names):
         if 'Identical' in axes:
             idx = [0] * (n_trials_per_block // 4) + [1] * (n_trials_per_block // 4)
             random.shuffle(idx)
@@ -137,12 +137,12 @@ def init_task_training():
         
         # Determining if this is an identical stimulus trial
         identical_trial = False
-        if axis_names[category-1][axis-1] == 'Identical':
+        if axis_names[category][axis] == 'Identical':
             if identical_trials_for_replacement[category]:
                 identical_trial = identical_trials_for_replacement[category].pop()
         
         # Loading stimuli
-        trial_folder = stim_folder / category_names[category-1] / f'Pair{trial_pair}'
+        trial_folder = stim_folder / category_names[category] / f'Pair{trial_pair + 1}'
         folder_images = list(trial_folder.glob('*.jpg'))
         if len(folder_images) == 0:
             folder_images = list(trial_folder.glob('*.JPG'))
@@ -151,7 +151,7 @@ def init_task_training():
         trial_stims[t_i][0] = str(sampled_images[0])
         trial_stims[t_i][1] = str(sampled_images[1]) if len(sampled_images) > 1 else str(sampled_images[0])
         
-        if axis_names[category-1][axis-1] == 'Identical' and identical_trial:
+        if axis_names[category][axis] == 'Identical' and identical_trial:
             trial_stims[t_i][1] = str(sampled_images[0])
         
         stim1_position[t_i] = 3
@@ -161,7 +161,7 @@ def init_task_training():
             break_trial[t_i] = 1
         
         # Instructions
-        trial_axis_name = axis_names[category-1][axis-1]
+        trial_axis_name = axis_names[category][axis]
         trial_instructions = get_instruction_text(
             category, trial_axis_name, anti_task[t_i],
             prompt_variant[t_i], equivalent_variant_id[t_i]

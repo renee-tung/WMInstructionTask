@@ -80,7 +80,7 @@ def get_correct_responses(task_struct):
     for t_i in range(n_trials):
         axis = task_struct['trial_axis'][t_i]
         category = task_struct['trial_categories'][t_i]
-        trial_axis_name = task_struct['category_and_axis'][1][category-1][axis-1]
+        trial_axis_name = task_struct['category_and_axis'][1][category][axis]
         
         # Determine target feature based on trial axis and variant
         if trial_axis_name == 'Colorful':

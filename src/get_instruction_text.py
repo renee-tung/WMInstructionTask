@@ -9,7 +9,7 @@ def get_instruction_text(category, trial_axis_name, anti_task, prompt_variant, e
     Parameters:
     -----------
     category : int
-        Category index (1=Animals, 2=Cars, 3=Faces, 4=Fruits)
+        Category index (0=Animals, 1=Cars, 2=Faces, 3=Fruits)
     trial_axis_name : str
         Name of the axis ('New', 'Identical', 'Count', 'Colorful')
     anti_task : bool or int
@@ -35,13 +35,13 @@ def get_instruction_text(category, trial_axis_name, anti_task, prompt_variant, e
     alternative_singular_category_labels = ['creature', 'vehicle', 'person', 'object']
     alternative_plural_category_labels = ['creatures', 'vehicles', 'people', 'objects']
     
-    # Adjust for 0-indexed category
-    cat_idx = category - 1
+    # Category is already 0-indexed
+    cat_idx = category
     
     if trial_axis_name == 'New':
         if anti_task:
             if prompt_variant:
-                if category == 3:
+                if category == 2:
                     if equivalent_variant_id:
                         text = f'Avoid the younger {singular_category_labels[cat_idx]}'
                     else:
@@ -52,7 +52,7 @@ def get_instruction_text(category, trial_axis_name, anti_task, prompt_variant, e
                     else:
                         text = f'Do not select the more modern {alternative_singular_category_labels[cat_idx]}'
             else:
-                if category == 3:
+                if category == 2:
                     if equivalent_variant_id:
                         text = f'Avoid the older {singular_category_labels[cat_idx]}'
                     else:
@@ -64,7 +64,7 @@ def get_instruction_text(category, trial_axis_name, anti_task, prompt_variant, e
                         text = f'Do not select the less modern {alternative_singular_category_labels[cat_idx]}'
         else:
             if prompt_variant:
-                if category == 3:
+                if category == 2:
                     if equivalent_variant_id:
                         text = f'Choose the younger {singular_category_labels[cat_idx]}'
                     else:
@@ -75,7 +75,7 @@ def get_instruction_text(category, trial_axis_name, anti_task, prompt_variant, e
                     else:
                         text = f'Select the more modern {alternative_singular_category_labels[cat_idx]}'
             else:
-                if category == 3:
+                if category == 2:
                     if equivalent_variant_id:
                         text = f'Choose the older {singular_category_labels[cat_idx]}'
                     else:

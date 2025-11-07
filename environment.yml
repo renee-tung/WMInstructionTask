@@ -1,8 +1,9 @@
-name: WMtask
+name: WM_task
 channels:
+  - conda-forge
   - defaults
 dependencies:
   - python=3.9
-  - psychopy
-  - ipykernel
-prefix: C:\Users\nuttida-lab\.conda\envs\WMtask
+  - psychopy=2022.2.5
+  - pyglet=1.5.27
+prefix: C:\Users\nuttida-lab\.conda\envs\WM_task

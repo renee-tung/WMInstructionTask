@@ -52,13 +52,13 @@ def init_task():
     n_trials_per_block = 48
     n_trials = n_trials_per_block * n_blocks
     
-    # Trial conditions: 1 = instruction first; 2 = instruction in the middle
-    trial_conditions = (
-        [2] * n_trials_per_block +
-        [1] * n_trials_per_block +
-        [2] * n_trials_per_block +
-        [1] * n_trials_per_block
-    )
+    # Trial conditions: 1 = instruction first; 2 = instruction last
+    trial_conditions = np.concatenate([
+            2 * np.ones(n_trials_per_block, dtype=int),
+            np.ones(n_trials_per_block, dtype=int),
+            2 * np.ones(n_trials_per_block, dtype=int),
+            np.ones(n_trials_per_block, dtype=int),
+        ])
     
     # Relevant axis of each trial
     category_names = ['Animals', 'Cars', 'Faces', 'Fruits']
@@ -71,29 +71,29 @@ def init_task():
     category_and_axis = [category_names, axis_names]
     
     # Which of the two axes belonging to each category will be used in each trial
-    trial_categories = [1, 2, 3, 4]
-    trial_axis = [1, 2]
+    trial_categories = [0, 1, 2, 3]
+    trial_axis = [0, 1]
     anti_task = [0, 1]
     prompt_variant = [0, 1]
     equivalent_variant_id = [0, 1]
     
     # Guaranteeing a balanced distribution of each category x axis combination
-    from itertools import product
-    combinations = list(product(trial_categories, trial_axis, anti_task, prompt_variant, equivalent_variant_id))
-    n = len(combinations)
+    x1, x2, x3, x4, x5 = np.meshgrid(trial_categories, trial_axis, anti_task, prompt_variant, equivalent_variant_id, indexing='ij')
+    result = np.column_stack([x1.ravel(), x2.ravel(), x3.ravel(), x4.ravel(), x5.ravel()])
+    n = result.shape[0]
     factor = n_trials // n
-    result = combinations * factor
+    result = result * factor
     if len(result) < n_trials:
-        result.extend(combinations[:n_trials - len(result)])
+        result = np.concatenate([result, result[:n_trials - len(result)]])
     
     # Randomize trial order
-    random.shuffle(result)
+    result = np.random.permutation(result) 
     
-    trial_categories = [r[0] for r in result]
-    trial_axis_list = [r[1] for r in result]
-    anti_task = [r[2] for r in result]
-    prompt_variant = [r[3] for r in result]
-    equivalent_variant_id = [r[4] for r in result]
+    trial_categories = result[:, 0]
+    trial_axis_list = result[:, 1]
+    anti_task = result[:, 2]
+    prompt_variant = result[:, 3]
+    equivalent_variant_id = result[:, 4]
     
     # Determining which stimuli to use in each trial
     stim_folder = Path('..') / 'stimuli' / 'Task_Stim_Version2'
@@ -102,27 +102,31 @@ def init_task():
     stim1_position = np.full(n_trials, np.nan)
     stim2_position = np.full(n_trials, np.nan)
     break_trial = np.zeros(n_trials, dtype=int)
+
+    # Hard code number of pairs and repetitions given task time constraints
+    n_pairs = 6
+    n_repetitions = 4
     
     # Filling trial cells with pair numbers to be drawn from (without replacement)
     pair_numbers = {}
-    for i in range(1, 3):  # 2 axes
-        for j in range(1, 5):  # 4 categories
-            pair_numbers[(i, j)] = list(range(1, 7)) * 4  # 6 pairs x 4 repetitions
+    for i in trial_axis:  # 2 axes
+        for j in trial_categories:  # 4 categories
+            pair_numbers[(i, j)] = list(range(n_pairs)) * n_repetitions  # n_pairs (0-n_pairs-1) x n_repetitions repetitions
     
     # Filling identical cells with identical trials to be drawn from (without replacement)
     identical_trials = {}
-    for i, axes in enumerate(axis_names, 1):
+    for i, axes in enumerate(axis_names):
         if 'Identical' in axes:
             idx = [0] * (n_trials_per_block // 4) + [1] * (n_trials_per_block // 4)
             random.shuffle(idx)
             identical_trials[i] = idx
-    
     identical_trials_for_replacement = {k: v.copy() for k, v in identical_trials.items()}
     
     # Response prompts
     prompt_types = [random.randint(1, 2) for _ in range(n_trials)]
     left_text = [None] * n_trials
     right_text = [None] * n_trials
+    trial_instructions = [None] * n_trials
     
     # Trial loop to set up stimuli and instructions
     for t_i in range(n_trials):
@@ -140,12 +144,12 @@ def init_task():
         
         # Determining if this is an identical stimulus trial in the identical axis
         identical_trial = False
-        if axis_names[category-1][axis-1] == 'Identical':
+        if axis_names[category][axis] == 'Identical':
             if identical_trials_for_replacement[category]:
                 identical_trial = identical_trials_for_replacement[category].pop()
         
         # Loading stimuli
-        trial_folder = stim_folder / category_names[category-1] / f'Pair{trial_pair}'
+        trial_folder = stim_folder / category_names[category] / f'Pair{trial_pair + 1}'
         folder_images = list(trial_folder.glob('*.jpg'))
         if len(folder_images) == 0:
             folder_images = list(trial_folder.glob('*.JPG'))
@@ -156,7 +160,7 @@ def init_task():
         trial_stims[t_i][1] = str(sampled_images[1]) if len(sampled_images) > 1 else str(sampled_images[0])
         
         # Keeping first image equal to second in identical trials
-        if axis_names[category-1][axis-1] == 'Identical' and identical_trial:
+        if axis_names[category][axis] == 'Identical' and identical_trial:
             trial_stims[t_i][1] = str(sampled_images[0])
         
         # Randomly select position of stimuli (1 = left / 2 = right / 3 = center)
@@ -167,8 +171,8 @@ def init_task():
             break_trial[t_i] = 1
         
         # Instructions
-        trial_axis_name = axis_names[category-1][axis-1]
-        trial_instructions = get_instruction_text(
+        trial_axis_name = axis_names[category][axis]
+        trial_instructions[t_i] = get_instruction_text(
             category, trial_axis_name, anti_task[t_i],
             prompt_variant[t_i], equivalent_variant_id[t_i]
         )
@@ -209,9 +213,13 @@ def init_task():
         'anti_task': anti_task,
         'prompt_variant': prompt_variant,
         'equivalent_variant_id': equivalent_variant_id,
+        'trial_instructions': trial_instructions,
+        'prompt_types': prompt_types,
         'stim_folder': stim_folder,
         'trial_stims': trial_stims,
         'trial_pairs': trial_pairs,
+        'n_pairs': n_pairs,
+        'n_repetitions': n_repetitions,
         'stim1_position': stim1_position,
         'stim2_position': stim2_position,
         'break_trial': break_trial,
@@ -221,7 +229,7 @@ def init_task():
         'instruction_time_min': 2.5,
         'instruction_time_max': 4.0,
         'stim1_time': 1.0,
-        'ISI': 0.8,
+        'ISI': 2.0, # changed from 0.8
         'stim2_time': 1.0,
         'response_time_max': 3.0,
         'text_holdout_time': 0.5,

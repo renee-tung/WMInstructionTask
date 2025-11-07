@@ -7,6 +7,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+import pickle
 
 from psychopy import core, visual, event
 # Optional hardware imports - only needed if TTL/EyeLink are used
@@ -22,6 +23,9 @@ from src.finish_experiment import finish_experiment
 from src.set_marker_ids import set_marker_ids
 from src.send_ttl import send_ttl
 from src.open_logfile import open_logfile
+from src.config_io import config_io
+from src.eye_link_setup import eye_link_setup
+from src.terminate_experiment import terminate_experiment
 
 # Set up base folder
 basefolder = Path(__file__).parent.parent.parent
@@ -36,23 +40,14 @@ def main():
     
     # Save initial task structure
     output_file = task_struct['output_folder'] / task_struct['file_name']
-    import pickle
     with open(output_file.with_suffix('.pkl'), 'wb') as f:
         pickle.dump({'task_struct': task_struct, 'disp_struct': disp_struct}, f)
     
-        # Set up TTL if not in debug mode
+    # Set up TTL if not in debug mode
     if not task_struct['debug']:
         set_marker_ids()
-        # Note: Parallel port setup depends on system configuration
-        # For Windows, you may need to use inpout32/inpout64 DLLs
-        # This is a placeholder - actual implementation depends on hardware
-        try:
-            if parallel is None:
-                raise ImportError("psychopy.hardware.parallel not available")
-            task_struct['parallel_port'] = parallel.ParallelPort(address=0xCFF8)  # Common address
-        except (ImportError, Exception) as e:
-            print(f"Warning: Could not initialize parallel port. TTL sending disabled. ({e})")
-            task_struct['parallel_port'] = None
+        # Configure parallel port for TTL sending
+        task_struct['parallel_port'] = config_io()
     
     # Setting up EyeLink if required
     if task_struct['eye_link_mode']:
@@ -65,26 +60,29 @@ def main():
         eyelink_logs_folder.mkdir(exist_ok=True)
         edf_filename_local = eyelink_logs_folder / f"VERBAL_{timestamp_str}.edf"
         
-        # Initialize EyeLink (placeholder - actual implementation needs EyeLink SDK)
-        try:
-            from psychopy.iohub.client import launchHubServer
-            io = launchHubServer()
-            tracker = io.devices.tracker
-            
-            # EyeLink setup would go here
-            # ret_code = eye_link_setup(disp_struct['win'], dummy_mode, edf_filename)
-            ret_code = 1  # Placeholder
-        except ImportError:
-            print("Warning: psychopy.iohub not available. EyeLink support disabled.")
-            ret_code = 0
-        except Exception as e:
-            print(f"EyeLink initialization failed: {e}")
-            ret_code = 0
+        # Initialize EyeLink
+        ret_code, tracker = eye_link_setup(disp_struct['win'], dummy_mode, edf_filename)
         
         if ret_code != 1:
+            # Aborted - terminate experiment early
+            terminate_experiment(disp_struct, fid_log, task_struct['eye_link_mode'])
             print('Experiment aborted in eyelink setup screen')
-            finish_experiment(task_struct, disp_struct)
             return
+        
+        # EyeLink setup succeeded
+        try:
+            # Send initial EyeLink messages
+            if tracker is not None:
+                # Note: Actual EyeLink message sending depends on SDK implementation
+                # tracker.sendMessage(fname_log)
+                # tracker.sendCommand('record_status_message "NO exp init"')
+                pass
+        except Exception as e:
+            print(f"Warning: Could not send initial EyeLink messages: {e}")
+        
+        # Write log entry
+        from src.finish_experiment import write_log_with_eyelink
+        write_log_with_eyelink({'fid_log': fid_log}, 'EXPERIMENT_ON_REAL', '')
         
         task_struct['file_label'] = file_label
         task_struct['fid_log'] = fid_log
@@ -93,6 +91,7 @@ def main():
         task_struct['edf_filename'] = edf_filename
         task_struct['edf_filename_local'] = edf_filename_local
         task_struct['ret_code'] = ret_code
+        task_struct['tracker'] = tracker  # Store tracker object
     
     # First TTL
     if not task_struct['debug']:
