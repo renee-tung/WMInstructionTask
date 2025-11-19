@@ -11,6 +11,7 @@ from psychopy import visual, monitors, event
 from psychopy.hardware import keyboard
 
 from get_instruction_text import get_instruction_text
+from get_motor_instruction_text import get_motor_instruction_text
 from get_correct_responses import get_correct_responses
 from init_cedrus import init_cedrus
 
@@ -51,7 +52,7 @@ def init_task():
     n_trials_per_block = 48
     n_trials = n_trials_per_block * n_blocks
     
-    # Trial conditions: 1 = instruction first; 2 = instruction last
+    # Trial conditions: 1 = instruction first; 2 = instruction last (retrocue)
     trial_conditions = np.concatenate([
             2 * np.ones(n_trials_per_block, dtype=int),
             np.ones(n_trials_per_block, dtype=int),
@@ -73,13 +74,14 @@ def init_task():
     trial_categories = [0, 1, 2, 3]
     trial_axis = [0, 1]
     # anti_task = [0, 1]
-    anti_task = [0, 0] # getting rid of the anti-task
+    anti_task = [0] # getting rid of the anti-task
     prompt_variant = [0, 1]
     equivalent_variant_id = [0, 1]
+    response_variant = [0, 1] # button choice vs slider
     
     # Guaranteeing a balanced distribution of each category x axis combination
-    x1, x2, x3, x4, x5 = np.meshgrid(trial_categories, trial_axis, anti_task, prompt_variant, equivalent_variant_id, indexing='ij')
-    result = np.column_stack([x1.ravel(), x2.ravel(), x3.ravel(), x4.ravel(), x5.ravel()])
+    x1, x2, x3, x4, x5, x6 = np.meshgrid(trial_categories, trial_axis, anti_task, prompt_variant, equivalent_variant_id, response_variant, indexing='ij')
+    result = np.column_stack([x1.ravel(), x2.ravel(), x3.ravel(), x4.ravel(), x5.ravel(), x6.ravel()])
     n = result.shape[0]
     factor = n_trials // n
     result = result * factor
@@ -94,6 +96,7 @@ def init_task():
     anti_task = result[:, 2]
     prompt_variant = result[:, 3]
     equivalent_variant_id = result[:, 4]
+    response_variant = result[:, 5]
     
     # Determining which stimuli to use in each trial
     stim_folder = Path('..') / 'stimuli' / 'Task_Stim_Version2'
@@ -127,6 +130,7 @@ def init_task():
     left_text = [None] * n_trials
     right_text = [None] * n_trials
     trial_instructions = [None] * n_trials
+    response_instructions = [None] * n_trials
     
     # Trial loop to set up stimuli and instructions
     for t_i in range(n_trials):
@@ -170,13 +174,18 @@ def init_task():
         if (t_i + 1) % n_trials_per_block == 0 and t_i < n_trials - 1:
             break_trial[t_i] = 1
         
-        # Instructions
+        # Instructions for task
         trial_axis_name = axis_names[category][axis]
         trial_instructions[t_i] = get_instruction_text(
             category, trial_axis_name, anti_task[t_i],
             prompt_variant[t_i], equivalent_variant_id[t_i]
         )
         
+        # Instructions for response
+        response_instructions[t_i] = get_motor_instruction_text(
+            response_variant[t_i]
+        )
+
         # Response prompts
         if trial_axis_name != 'Identical':
             if prompt_types[t_i] == 1:
@@ -213,7 +222,9 @@ def init_task():
         'anti_task': anti_task,
         'prompt_variant': prompt_variant,
         'equivalent_variant_id': equivalent_variant_id,
+        'response_variant': response_variant,
         'trial_instructions': trial_instructions,
+        'response_instructions': response_instructions,
         'prompt_types': prompt_types,
         'stim_folder': stim_folder,
         'trial_stims': trial_stims,

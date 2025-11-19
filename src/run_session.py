@@ -158,7 +158,7 @@ def run_session(task_struct, disp_struct):
         # Wait for stimulus presentation
         core.wait(task_struct['stim1_time'])
         
-        # Sending stim off message before instruction/stim2
+        # Sending stim off message before stim2
         if task_struct['eye_link_mode']:
             write_log_with_eyelink(task_struct, 'STIMULUS_OFF', '')
         
@@ -239,6 +239,44 @@ def run_session(task_struct, disp_struct):
             
             if not task_struct['debug']:
                 send_ttl(task_struct, 'INSTRUCTION_OFF')
+
+        # Presenting response instruction (button or slider)
+        plotted_text = get_motor_instruction_text_for_trial(task_struct, t_i)
+        # Cleaning screen
+        win.flip()
+        instruction_text = visual.TextStim(
+            win,
+            text=plotted_text,
+            color='white',
+            height=48,
+            wrapWidth=win.size[0] * 0.8
+        )
+        instruction_text.draw()
+        trial_struct['responseinstruction_flip'] = win.flip()
+        
+        if task_struct['eye_link_mode']:
+            write_log_with_eyelink(task_struct, 'INSTRUCTION_ON', '')
+        
+        if not task_struct['debug']:
+            send_ttl(task_struct, 'INSTRUCTION_ON')
+        
+        # Wait for at least this amount of time
+        core.wait(task_struct['instruction_time_min'])
+        
+        # Wait more for key press or continue after another set interval
+        event.clearEvents()
+        keys = event.waitKeys(
+            keyList=['space'],
+            maxWait=task_struct['instruction_time_max'] - task_struct['instruction_time_min'],
+            timeStamped=True
+        )
+        
+        if task_struct['eye_link_mode']:
+            write_log_with_eyelink(task_struct, 'INSTRUCTION_OFF', '')
+        
+        if not task_struct['debug']:
+            send_ttl(task_struct, 'INSTRUCTION_OFF')
+        
         
         # Getting response
         # Plotting left/right frames
@@ -458,7 +496,8 @@ def get_instruction_text_for_trial(task_struct, t_i):
 
 def get_motor_instruction_text_for_trial(task_struct, t_i):
     """Helper function to get motor instruction text for a trial. """
-
+    response_variant = task_struct['response_variant']
+    return get_motor_instruction_text(response_variant[t_i])
 
 
 def write_log_with_eyelink(task_struct, event_name, message):
