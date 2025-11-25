@@ -204,6 +204,10 @@ def init_task():
             else:
                 left_text[t_i] = 'No'
                 right_text[t_i] = 'Yes'
+
+    # create time jitters
+    fixations = np.random.uniform(0.9, 1.2, n_trials).round(3)
+    delays = np.random.uniform(2, 2.4, n_trials).round(3)
     
     # Create task struct
     task_struct = {
@@ -239,17 +243,17 @@ def init_task():
         'break_trial': break_trial,
         'left_text': left_text,
         'right_text': right_text,
-        'fixation_time': 1.0,
+        'fixation_time': fixations, # changed from fixed 1.0,
         'instruction_time_min': 2.0,
         'instruction_time_max': 2.5,
         'stim1_time': 1.0,
-        'ISI': 2.0, # changed from 0.8
+        'ISI': delays, # changed from fixed 0.8 or 2.0 
         'stim2_time': 1.0,
+        'response_instruction_time': 1.5,
         'response_time_max': 3.0,
         'text_holdout_time': 0.5,
-        'ITI': 1.0,
+        'ITI': 0.0, # removing this, and making it a part of fixation
         'instruction_time': np.full(n_trials, np.nan), # time spent on instruction 1 screen
-        'response_instruction_time': np.full(n_trials, np.nan), # time spent on response instruction screen
         'response_time': np.full(n_trials, np.nan), # trial RTs
         'slider_positions': [None] * n_trials,
         'trial_time': np.full(n_trials, np.nan),
@@ -266,11 +270,15 @@ def init_task():
         task_struct['left_key'] = 4
         task_struct['right_key'] = 5
         task_struct['confirm_key'] = 3
+        task_struct['up_key'] = 1
+        task_struct['down_key'] = 2
     else:
         task_struct['handle'] = None
         task_struct['left_key'] = 'left'  # Left arrow key
         task_struct['right_key'] = 'right'  # Right arrow key
         task_struct['confirm_key'] = 'space'
+        task_struct['up_key'] = 'up'
+        task_struct['down_key'] = 'down'
     
     task_struct['escape_key'] = 'q'
     task_struct['pause_key'] = 'p'

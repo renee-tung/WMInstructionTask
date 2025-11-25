@@ -18,6 +18,7 @@ from src.set_marker_ids import *
 from src.intermission_screen import intermission_screen
 from src.get_instruction_text import get_instruction_text
 from src.get_motor_instruction_text import get_motor_instruction_text
+from src.finish_experiment import finish_experiment
 
 def run_session(task_struct, disp_struct):
     """
@@ -72,25 +73,6 @@ def run_session(task_struct, disp_struct):
         # Displaying message on console
         print(f'Trial number {t_i + 1} / {task_struct["n_trials"]}')
         
-        # Checking whether we want to interrupt or pause the experiment
-        keys = event.getKeys()
-        if keys:
-            # Check if the experimenter is pressing a key
-            if task_struct['escape_key'] in keys:
-                # Experiment incomplete upon finishing
-                task_struct['complete_flag'] = 0
-                from src.finish_experiment import finish_experiment
-                finish_experiment(task_struct, disp_struct)
-                return task_struct, disp_struct
-            
-            # Checking if we want to just pause the experiment
-            if task_struct['pause_key'] in keys:
-                event.clearEvents()
-                while True:
-                    keys = event.waitKeys(keyList=[task_struct['continue_key']])
-                    if keys:
-                        break
-        
         # Creating trial struct
         trial_struct = {}
         
@@ -113,7 +95,10 @@ def run_session(task_struct, disp_struct):
         fixation_line1.draw()
         fixation_line2.draw()
         trial_struct['fixation1_flip'] = win.flip()
-        core.wait(task_struct['fixation_time'])
+        core.wait(task_struct['fixation_time'][t_i])
+        
+        # Check control keys (escape/pause) using helper
+        res = check_for_control_keys(task_struct, disp_struct)
         
         # Presenting pre-stim instruction (if required)
         if task_struct['trial_conditions'][t_i] == 1:
@@ -216,7 +201,7 @@ def run_session(task_struct, disp_struct):
         fixation_line1.draw()
         fixation_line2.draw()
         trial_struct['fixation1_flip'] = win.flip()
-        core.wait(task_struct['ISI'])
+        core.wait(task_struct['ISI'][t_i])
         
         # Presenting second stimulus
         stim2_position_trial = int(task_struct['stim2_position'][t_i])
@@ -315,22 +300,8 @@ def run_session(task_struct, disp_struct):
             send_ttl(task_struct, 'INSTRUCTION_ON')
         
         # Wait for at least this amount of time
-        core.wait(task_struct['instruction_time_min'])
-        
-        # Wait more for key press or continue after another set interval
-        event.clearEvents()
-        keys = event.waitKeys(
-            keyList=['space'],
-            maxWait=task_struct['instruction_time_max'] - task_struct['instruction_time_min'],
-            timeStamped=True
-        )
-        if keys:
-            key, key_time = keys[0]
-            instruction_end_time = key_time
-        else:
-            instruction_end_time = core.getTime()
-        task_struct['response_instruction_time'][t_i] = instruction_end_time - instruction_onset
-        
+        core.wait(task_struct['response_instruction_time'])
+                
         if task_struct['eye_link_mode']:
             write_log_with_eyelink(task_struct, 'INSTRUCTION_OFF', '')
         
@@ -357,6 +328,7 @@ def run_session(task_struct, disp_struct):
             # left_pressed, right_pressed, marker_moved = 0, 0, 0
             positions = []
             times = []
+
             marker_move = 0.1 # amount to move marker per key press
 
             event.clearEvents()
@@ -385,7 +357,7 @@ def run_session(task_struct, disp_struct):
                 send_ttl(task_struct, 'STIMULUS_ON')
 
             while current_time - cue_time < task_struct['response_time_max']:
-
+                
                 # Draw existing response frame
                 left_text_stim.draw()
                 right_text_stim.draw()
@@ -472,50 +444,50 @@ def run_session(task_struct, disp_struct):
 
         else: # Button response
 
-            # Plotting left/right frames
-            left_rect = [x + offset for x, offset in zip(disp_struct['horizontal_rects'][0], [-10, -10, 10, 10])]
-            right_rect = [x + offset for x, offset in zip(disp_struct['horizontal_rects'][1], [-10, -10, 10, 10])]
-            
-            left_frame = visual.Rect(
+            # Plotting top/bottom frames (changed from left/right)
+            top_rect = [x + offset for x, offset in zip(disp_struct['vertical_rects'][0], [-10, -10, 10, 10])]
+            bottom_rect = [x + offset for x, offset in zip(disp_struct['vertical_rects'][1], [-10, -10, 10, 10])]
+
+            top_frame = visual.Rect(
                 win,
-                width=left_rect[2] - left_rect[0],
-                height=left_rect[3] - left_rect[1],
-                pos=((left_rect[0] + left_rect[2])/2, (left_rect[1] + left_rect[3])/2),
+                width=top_rect[2] - top_rect[0],
+                height=top_rect[3] - top_rect[1],
+                pos=((top_rect[0] + top_rect[2])/2, (top_rect[1] + top_rect[3])/2),
                 lineColor='green',
                 fillColor=None,
                 lineWidth=5
             )
-            right_frame = visual.Rect(
+            bottom_frame = visual.Rect(
                 win,
-                width=right_rect[2] - right_rect[0],
-                height=right_rect[3] - right_rect[1],
-                pos=((right_rect[0] + right_rect[2])/2, (right_rect[1] + right_rect[3])/2),
+                width=bottom_rect[2] - bottom_rect[0],
+                height=bottom_rect[3] - bottom_rect[1],
+                pos=((bottom_rect[0] + bottom_rect[2])/2, (bottom_rect[1] + bottom_rect[3])/2),
                 lineColor='red',
                 fillColor=None,
                 lineWidth=5
             )
-            
-            left_text_stim = visual.TextStim(
+
+            top_text_stim = visual.TextStim(
                 win,
                 text=task_struct['left_text'][t_i],
                 color='white',
                 height=48,
-                pos=((disp_struct['horizontal_rects'][0][0] + disp_struct['horizontal_rects'][0][2])/2,
-                    (disp_struct['horizontal_rects'][0][1] + disp_struct['horizontal_rects'][0][3])/2)
+                pos=((disp_struct['vertical_rects'][0][0] + disp_struct['vertical_rects'][0][2])/2,
+                    (disp_struct['vertical_rects'][0][1] + disp_struct['vertical_rects'][0][3])/2)
             )
-            right_text_stim = visual.TextStim(
+            bottom_text_stim = visual.TextStim(
                 win,
                 text=task_struct['right_text'][t_i],
                 color='white',
                 height=48,
-                pos=((disp_struct['horizontal_rects'][1][0] + disp_struct['horizontal_rects'][1][2])/2,
-                    (disp_struct['horizontal_rects'][1][1] + disp_struct['horizontal_rects'][1][3])/2)
+                pos=((disp_struct['vertical_rects'][1][0] + disp_struct['vertical_rects'][1][2])/2,
+                    (disp_struct['vertical_rects'][1][1] + disp_struct['vertical_rects'][1][3])/2)
             )
             
-            left_frame.draw()
-            right_frame.draw()
-            left_text_stim.draw()
-            right_text_stim.draw()
+            top_frame.draw()
+            bottom_frame.draw()
+            top_text_stim.draw()
+            bottom_text_stim.draw()
             
             trial_struct['stim_response_prompt_flip'] = win.flip()
             
@@ -526,10 +498,10 @@ def run_session(task_struct, disp_struct):
                 send_ttl(task_struct, 'STIMULUS_ON')
             
             # Redraw for next flip
-            left_frame.draw()
-            right_frame.draw()
-            left_text_stim.draw()
-            right_text_stim.draw()
+            top_frame.draw()
+            bottom_frame.draw()
+            top_text_stim.draw()
+            bottom_text_stim.draw()
             
             # Wait for subject's response
             cue_time = core.getTime()
@@ -544,6 +516,7 @@ def run_session(task_struct, disp_struct):
                     handle.reset_input_buffer()
                 
                 while current_time - cue_time < task_struct['response_time_max']:
+                    
                     if handle:
                         # Check CEDRUS button box
                         # Note: Actual implementation depends on CEDRUS API
@@ -557,38 +530,38 @@ def run_session(task_struct, disp_struct):
                             pass
                     
                     # Also check keyboard as backup
-                    keys = event.getKeys(keyList=[task_struct['left_key'], task_struct['right_key']], timeStamped=True)
+                    keys = event.getKeys(keyList=[task_struct['up_key'], task_struct['down_key']], timeStamped=True)
                     if keys:
                         key, time = keys[0]
                         task_struct['response_time'][t_i] = time - cue_time
-                        if key == task_struct['left_key']:
+                        if key == task_struct['up_key']:
                             task_struct['resp_key'][t_i] = 1
                             if task_struct['eye_link_mode']:
                                 write_log_with_eyelink(task_struct, 'RESPONSE_LEFT', '')
                             if not task_struct['debug']:
                                 send_ttl(task_struct, 'RESPONSE_LEFT')
                             # Plotting grayed out selected text
-                            left_text_stim.color = 'gray'
-                            left_text_stim.draw()
-                            left_frame.draw()
-                            right_frame.draw()
-                            right_text_stim.draw()
+                            top_text_stim.color = 'gray'
+                            top_text_stim.draw()
+                            top_frame.draw()
+                            bottom_frame.draw()
+                            bottom_text_stim.draw()
                             trial_struct['button_press_flip'] = win.flip()
                             core.wait(task_struct['text_holdout_time'])
                             response_received = True
                             break
-                        elif key == task_struct['right_key']:
+                        elif key == task_struct['down_key']:
                             task_struct['resp_key'][t_i] = 2
                             if task_struct['eye_link_mode']:
                                 write_log_with_eyelink(task_struct, 'RESPONSE_RIGHT', '')
                             if not task_struct['debug']:
                                 send_ttl(task_struct, 'RESPONSE_RIGHT')
                             # Plotting grayed out selected text
-                            right_text_stim.color = 'gray'
-                            left_frame.draw()
-                            right_frame.draw()
-                            left_text_stim.draw()
-                            right_text_stim.draw()
+                            bottom_text_stim.color = 'gray'
+                            top_frame.draw()
+                            bottom_frame.draw()
+                            top_text_stim.draw()
+                            bottom_text_stim.draw()
                             trial_struct['button_press_flip'] = win.flip()
                             core.wait(task_struct['text_holdout_time'])
                             response_received = True
@@ -599,44 +572,212 @@ def run_session(task_struct, disp_struct):
                 # Keyboard response (using arrow keys)
                 event.clearEvents()
                 while current_time - cue_time < task_struct['response_time_max']:
-                    keys = event.getKeys(keyList=[task_struct['left_key'], task_struct['right_key']], timeStamped=True)
+                    
+                    keys = event.getKeys(keyList=[task_struct['up_key'], task_struct['down_key']], timeStamped=True)
                     if keys:
                         key, time = keys[0]
                         task_struct['response_time'][t_i] = time - cue_time
-                        if key == task_struct['left_key']:
+                        if key == task_struct['up_key']:
                             task_struct['resp_key'][t_i] = 1
                             if task_struct['eye_link_mode']:
-                                write_log_with_eyelink(task_struct, 'RESPONSE_LEFT', '')
+                                write_log_with_eyelink(task_struct, 'RESPONSE_UP', '')
                             if not task_struct['debug']:
-                                send_ttl(task_struct, 'RESPONSE_LEFT')
+                                send_ttl(task_struct, 'RESPONSE_UP')
                             # Plotting grayed out selected text
-                            left_text_stim.color = 'gray'
-                            left_text_stim.draw()
-                            left_frame.draw()
-                            right_frame.draw()
-                            right_text_stim.draw()
+                            top_text_stim.color = 'gray'
+                            top_text_stim.draw()
+                            top_frame.draw()
+                            bottom_frame.draw()
+                            bottom_text_stim.draw()
                             trial_struct['button_press_flip'] = win.flip()
                             core.wait(task_struct['text_holdout_time'])
                             response_received = True
                             break
-                        elif key == task_struct['right_key']:
+                        elif key == task_struct['down_key']:
                             task_struct['resp_key'][t_i] = 2
                             if task_struct['eye_link_mode']:
-                                write_log_with_eyelink(task_struct, 'RESPONSE_RIGHT', '')
+                                write_log_with_eyelink(task_struct, 'RESPONSE_DOWN', '')
                             if not task_struct['debug']:
-                                send_ttl(task_struct, 'RESPONSE_RIGHT')
+                                send_ttl(task_struct, 'RESPONSE_DOWN')
                             # Plotting grayed out selected text
-                            right_text_stim.color = 'gray'
-                            left_frame.draw()
-                            right_frame.draw()
-                            left_text_stim.draw()
-                            right_text_stim.draw()
+                            bottom_text_stim.color = 'gray'
+                            top_frame.draw()
+                            bottom_frame.draw()
+                            top_text_stim.draw()
+                            bottom_text_stim.draw()
                             trial_struct['button_press_flip'] = win.flip()
                             core.wait(task_struct['text_holdout_time'])
                             response_received = True
                             break
                     
                     current_time = core.getTime()
+        
+
+            # # Plotting left/right frames
+            # left_rect = [x + offset for x, offset in zip(disp_struct['horizontal_rects'][0], [-10, -10, 10, 10])]
+            # right_rect = [x + offset for x, offset in zip(disp_struct['horizontal_rects'][1], [-10, -10, 10, 10])]
+            
+            # left_frame = visual.Rect(
+            #     win,
+            #     width=left_rect[2] - left_rect[0],
+            #     height=left_rect[3] - left_rect[1],
+            #     pos=((left_rect[0] + left_rect[2])/2, (left_rect[1] + left_rect[3])/2),
+            #     lineColor='green',
+            #     fillColor=None,
+            #     lineWidth=5
+            # )
+            # right_frame = visual.Rect(
+            #     win,
+            #     width=right_rect[2] - right_rect[0],
+            #     height=right_rect[3] - right_rect[1],
+            #     pos=((right_rect[0] + right_rect[2])/2, (right_rect[1] + right_rect[3])/2),
+            #     lineColor='red',
+            #     fillColor=None,
+            #     lineWidth=5
+            # )
+            
+            # left_text_stim = visual.TextStim(
+            #     win,
+            #     text=task_struct['left_text'][t_i],
+            #     color='white',
+            #     height=48,
+            #     pos=((disp_struct['horizontal_rects'][0][0] + disp_struct['horizontal_rects'][0][2])/2,
+            #         (disp_struct['horizontal_rects'][0][1] + disp_struct['horizontal_rects'][0][3])/2)
+            # )
+            # right_text_stim = visual.TextStim(
+            #     win,
+            #     text=task_struct['right_text'][t_i],
+            #     color='white',
+            #     height=48,
+            #     pos=((disp_struct['horizontal_rects'][1][0] + disp_struct['horizontal_rects'][1][2])/2,
+            #         (disp_struct['horizontal_rects'][1][1] + disp_struct['horizontal_rects'][1][3])/2)
+            # )
+            
+            # left_frame.draw()
+            # right_frame.draw()
+            # left_text_stim.draw()
+            # right_text_stim.draw()
+            
+            # trial_struct['stim_response_prompt_flip'] = win.flip()
+            
+            # if task_struct['eye_link_mode']:
+            #     write_log_with_eyelink(task_struct, 'STIMULUS_ON', '')
+            
+            # if not task_struct['debug']:
+            #     send_ttl(task_struct, 'STIMULUS_ON')
+            
+            # # Redraw for next flip
+            # left_frame.draw()
+            # right_frame.draw()
+            # left_text_stim.draw()
+            # right_text_stim.draw()
+            
+            # # Wait for subject's response
+            # cue_time = core.getTime()
+            # current_time = cue_time
+            # response_received = False
+
+            # if task_struct['use_cedrus']:
+            #     # CEDRUS response box handling
+            #     handle = task_struct['handle']
+            #     if handle:
+            #         # Clear buffer
+            #         handle.reset_input_buffer()
+                
+            #     while current_time - cue_time < task_struct['response_time_max']:
+            #         if handle:
+            #             # Check CEDRUS button box
+            #             # Note: Actual implementation depends on CEDRUS API
+            #             # This is a placeholder
+            #             try:
+            #                 if handle.in_waiting > 0:
+            #                     data = handle.read(handle.in_waiting)
+            #                     # Parse CEDRUS response (button codes vary by device)
+            #                     # Placeholder: assuming button 4 = left, button 5 = right
+            #             except:
+            #                 pass
+                    
+            #         # Also check keyboard as backup
+            #         keys = event.getKeys(keyList=[task_struct['left_key'], task_struct['right_key']], timeStamped=True)
+            #         if keys:
+            #             key, time = keys[0]
+            #             task_struct['response_time'][t_i] = time - cue_time
+            #             if key == task_struct['left_key']:
+            #                 task_struct['resp_key'][t_i] = 1
+            #                 if task_struct['eye_link_mode']:
+            #                     write_log_with_eyelink(task_struct, 'RESPONSE_LEFT', '')
+            #                 if not task_struct['debug']:
+            #                     send_ttl(task_struct, 'RESPONSE_LEFT')
+            #                 # Plotting grayed out selected text
+            #                 left_text_stim.color = 'gray'
+            #                 left_text_stim.draw()
+            #                 left_frame.draw()
+            #                 right_frame.draw()
+            #                 right_text_stim.draw()
+            #                 trial_struct['button_press_flip'] = win.flip()
+            #                 core.wait(task_struct['text_holdout_time'])
+            #                 response_received = True
+            #                 break
+            #             elif key == task_struct['right_key']:
+            #                 task_struct['resp_key'][t_i] = 2
+            #                 if task_struct['eye_link_mode']:
+            #                     write_log_with_eyelink(task_struct, 'RESPONSE_RIGHT', '')
+            #                 if not task_struct['debug']:
+            #                     send_ttl(task_struct, 'RESPONSE_RIGHT')
+            #                 # Plotting grayed out selected text
+            #                 right_text_stim.color = 'gray'
+            #                 left_frame.draw()
+            #                 right_frame.draw()
+            #                 left_text_stim.draw()
+            #                 right_text_stim.draw()
+            #                 trial_struct['button_press_flip'] = win.flip()
+            #                 core.wait(task_struct['text_holdout_time'])
+            #                 response_received = True
+            #                 break
+                    
+            #         current_time = core.getTime()
+            # else:
+            #     # Keyboard response (using arrow keys)
+            #     event.clearEvents()
+            #     while current_time - cue_time < task_struct['response_time_max']:
+            #         keys = event.getKeys(keyList=[task_struct['left_key'], task_struct['right_key']], timeStamped=True)
+            #         if keys:
+            #             key, time = keys[0]
+            #             task_struct['response_time'][t_i] = time - cue_time
+            #             if key == task_struct['left_key']:
+            #                 task_struct['resp_key'][t_i] = 1
+            #                 if task_struct['eye_link_mode']:
+            #                     write_log_with_eyelink(task_struct, 'RESPONSE_LEFT', '')
+            #                 if not task_struct['debug']:
+            #                     send_ttl(task_struct, 'RESPONSE_LEFT')
+            #                 # Plotting grayed out selected text
+            #                 left_text_stim.color = 'gray'
+            #                 left_text_stim.draw()
+            #                 left_frame.draw()
+            #                 right_frame.draw()
+            #                 right_text_stim.draw()
+            #                 trial_struct['button_press_flip'] = win.flip()
+            #                 core.wait(task_struct['text_holdout_time'])
+            #                 response_received = True
+            #                 break
+            #             elif key == task_struct['right_key']:
+            #                 task_struct['resp_key'][t_i] = 2
+            #                 if task_struct['eye_link_mode']:
+            #                     write_log_with_eyelink(task_struct, 'RESPONSE_RIGHT', '')
+            #                 if not task_struct['debug']:
+            #                     send_ttl(task_struct, 'RESPONSE_RIGHT')
+            #                 # Plotting grayed out selected text
+            #                 right_text_stim.color = 'gray'
+            #                 left_frame.draw()
+            #                 right_frame.draw()
+            #                 left_text_stim.draw()
+            #                 right_text_stim.draw()
+            #                 trial_struct['button_press_flip'] = win.flip()
+            #                 core.wait(task_struct['text_holdout_time'])
+            #                 response_received = True
+            #                 break
+                    
+            #         current_time = core.getTime()
         
         if task_struct['eye_link_mode']:
             write_log_with_eyelink(task_struct, 'STIMULUS_OFF', '')
@@ -702,3 +843,38 @@ def write_log_with_eyelink(task_struct, event_name, message):
         task_struct['fid_log'].write(log_entry)
         task_struct['fid_log'].flush()
 
+def check_for_control_keys(task_struct, disp_struct):
+    """
+    Check for experimenter control keys (quit / pause).
+    Returns:
+        'quit'     if q key was pressed
+        'continue' in all other cases
+    """
+    keys = event.getKeys(keyList=[task_struct['escape_key'], task_struct['pause_key']])
+    if not keys:
+        return 'continue'
+
+    # Quit experiment immediately
+    if task_struct['escape_key'] in keys:
+        task_struct['complete_flag'] = 0
+        finish_experiment(task_struct, disp_struct)
+        disp_struct['win'].close()
+        core.quit()   # hard exit
+        return 'quit'  # (won't be reached but nice for clarity)
+
+    # Pause experiment
+    if task_struct['pause_key'] in keys:
+        event.clearEvents()
+        while True:
+            keys2 = event.waitKeys(keyList=[task_struct['continue_key'], task_struct['escape_key']])
+            if task_struct['escape_key'] in keys2:
+                task_struct['complete_flag'] = 0
+                finish_experiment(task_struct, disp_struct)
+                disp_struct['win'].close()
+                core.quit()
+            if task_struct['continue_key'] in keys2:
+                break
+        event.clearEvents()
+        return 'continue'
+
+    return 'continue'

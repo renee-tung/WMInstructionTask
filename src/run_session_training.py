@@ -72,21 +72,10 @@ def run_session_training(task_struct, disp_struct):
         # Displaying message on console
         print(f'Trial number {t_i + 1} / {task_struct["n_trials"]}')
         
-        # Checking whether we want to interrupt or pause the experiment
-        keys = event.getKeys()
-        if keys:
-            if task_struct['escape_key'] in keys:
-                task_struct['complete_flag'] = 0
-                from src.finish_experiment_training import finish_experiment_training
-                finish_experiment_training(task_struct, disp_struct)
-                return task_struct, disp_struct
-            
-            if task_struct['pause_key'] in keys:
-                event.clearEvents()
-                while True:
-                    keys = event.waitKeys(keyList=[task_struct['continue_key']])
-                    if keys:
-                        break
+        # Check control keys (escape/pause) using helper
+        res = check_for_control_keys(task_struct, disp_struct)
+        if res != 'continue':
+            return task_struct, disp_struct
         
         # Creating trial struct
         trial_struct = {}
@@ -400,3 +389,38 @@ def run_session_training(task_struct, disp_struct):
     
     return task_struct, disp_struct
 
+def check_for_control_keys(task_struct, disp_struct):
+    """
+    Check for experimenter control keys (quit / pause).
+    Returns:
+        'quit'     if escape key was pressed
+        'continue' in all other cases
+    """
+    keys = event.getKeys()
+    if not keys:
+        return 'continue'
+
+    # Quit experiment immediately
+    if task_struct['escape_key'] in keys:
+        task_struct['complete_flag'] = 0
+        finish_experiment(task_struct, disp_struct)
+        disp_struct['win'].close()
+        core.quit()   # hard exit
+        return 'quit'  # (won't be reached but nice for clarity)
+
+    # Pause experiment
+    if task_struct['pause_key'] in keys:
+        event.clearEvents()
+        while True:
+            keys2 = event.waitKeys(keyList=[task_struct['continue_key'], task_struct['escape_key']])
+            if task_struct['escape_key'] in keys2:
+                task_struct['complete_flag'] = 0
+                finish_experiment(task_struct, disp_struct)
+                disp_struct['win'].close()
+                core.quit()
+            if task_struct['continue_key'] in keys2:
+                break
+        event.clearEvents()
+        return 'continue'
+
+    return 'continue'
