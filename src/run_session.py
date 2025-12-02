@@ -227,15 +227,10 @@ def run_session(task_struct, disp_struct):
             stim1_rect = disp_struct['horizontal_rects'][stim1_position_trial - 1]
 
             stim1_path = task_struct['trial_stims'][t_i][0]
-            stim1_image = visual.ImageStim(
-                win,
-                image=stim1_path,
-                pos=None,
-                size=stim1_rect[2] - stim1_rect[0],
-                units="pix"
-            )
+            stim1_image = disp_struct['image_cache'][stim1_path]
+            stim1_image.setSize(stim1_rect[2] - stim1_rect[0])
             stim1_image.setPos(((stim1_rect[0] + stim1_rect[2]) / 2,
-                                (stim1_rect[1] + stim1_rect[3]) / 2,))
+                                (stim1_rect[1] + stim1_rect[3]) / 2))
 
             stim1_clock = core.Clock()
             first_frame = True
@@ -291,13 +286,10 @@ def run_session(task_struct, disp_struct):
             
             # Load and display image
             stim2_path = task_struct['trial_stims'][t_i][1]
-            stim2_image = visual.ImageStim(
-                win,
-                image=stim2_path,
-                pos=None,
-                size = stim2_rect[2] - stim2_rect[0],
-                units="pix"
-            )
+            stim2_image = disp_struct['image_cache'][stim2_path]
+
+            stim2_width = stim2_rect[2] - stim2_rect[0]
+            stim2_image.setSize(stim2_width)
             stim2_image.setPos(((stim2_rect[0] + stim2_rect[2])/2, (stim2_rect[1] + stim2_rect[3])/2))
 
             stim2_clock = core.Clock()
