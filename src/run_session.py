@@ -98,9 +98,14 @@ def run_session(task_struct, disp_struct):
         if actually_sent_blackrock or task_struct['photodiode_test_mode']:
             pd_flash.trigger()
 
-    def flip_with_pd():
+    def flip_with_pd(label=None, trial=None):
         pd_flash.update()
-        return win.flip()
+        try:
+            return win.flip()
+        except Exception as e:
+            print(f"\n*** FLIP ERROR *** trial={trial}, phase={label}")
+            raise
+
 
     try:
         for t_i in range(task_struct['n_trials']):
