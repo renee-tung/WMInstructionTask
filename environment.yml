@@ -1,4 +1,4 @@
-name: WM_task
+name: DCWM_task
 channels:
   - conda-forge
   - defaults
