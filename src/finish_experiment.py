@@ -4,8 +4,6 @@ This function wraps up after the session, finishing the experiment.
 
 import numpy as np
 from src.intermission_screen import intermission_screen
-# from src.send_ttl import send_ttl
-from src.set_marker_ids import *
 
 def finish_experiment(task_struct, disp_struct):
     """

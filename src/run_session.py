@@ -13,8 +13,6 @@ from pathlib import Path
 import pickle
 import pdb
 
-from src.send_ttl import send_ttl
-from src.set_marker_ids import *
 from src.intermission_screen import intermission_screen
 from src.get_instruction_text import get_instruction_text
 from src.get_motor_instruction_text import get_motor_instruction_text

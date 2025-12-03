@@ -3,8 +3,6 @@ This function wraps up after the training session, finishing the experiment.
 """
 
 from src.intermission_screen import intermission_screen
-# from src.send_ttl import send_ttl
-from src.set_marker_ids import *
 import numpy as np
 
 def finish_experiment_training(task_struct, disp_struct):

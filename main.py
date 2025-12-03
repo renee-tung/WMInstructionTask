@@ -23,10 +23,7 @@ except ImportError:
 from src.init_task import init_task
 from src.run_session import run_session
 from src.finish_experiment import finish_experiment
-from src.set_marker_ids import set_marker_ids
-from src.send_ttl import send_ttl
 from src.open_logfile import open_logfile
-from src.config_io import config_io
 from src.eye_link_setup import eye_link_setup
 from src.terminate_experiment import terminate_experiment
 from src.filter_picklable import filter_picklable

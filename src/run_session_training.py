@@ -9,9 +9,6 @@ from psychopy.hardware import keyboard
 from pathlib import Path
 import pickle
 
-
-from src.send_ttl import send_ttl
-from src.set_marker_ids import *
 from src.intermission_screen import intermission_screen
 from src.run_session import (get_motor_instruction_text_for_trial, check_for_control_keys, 
                          get_instruction_text_for_trial, write_log_with_eyelink)
