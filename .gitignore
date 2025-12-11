@@ -2,3 +2,9 @@
 *.mat
 *.npy
 *.csv
+*.ccf
+*.csr
+*.sif
+*.toc
+*.nev
+*.ns5

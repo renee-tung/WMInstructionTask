@@ -693,30 +693,31 @@ def run_session_training(task_struct, disp_struct):
                     resp_clock = core.Clock()
                     first_frame = True
 
-                    while resp_clock.getTime() < task_struct['response_time_max'] and not response_received:
+                    while (resp_clock.getTime() - cue_time) < task_struct['response_time_max'] and not response_received:
                         # Draw button options every frame
                         top_frame.draw()
                         bottom_frame.draw()
                         top_text_stim.draw()
                         bottom_text_stim.draw()
 
-                        if first_frame:
-                            # First frame: log button onset + PD flash
-                            if task_struct['eye_link_mode']:
-                                write_log_with_eyelink(task_struct, 'BUTTON_ON', '')
+                        # if first_frame:
+                        #     # First frame: log button onset + PD flash
+                        #     if task_struct['eye_link_mode']:
+                        #         write_log_with_eyelink(task_struct, 'BUTTON_ON', '')
 
-                            send_comment_with_pd(
-                                event="annotate",
-                                task="DCWM", 
-                                additional_text=f"trial={t_i}; phase=button_on"
-                            )
+                        #     send_comment_with_pd(
+                        #         event="annotate",
+                        #         task="DCWM", 
+                        #         additional_text=f"trial={t_i}; phase=button_on"
+                        #     )
 
-                            trial_struct['response_on_flip'] = flip_with_pd()
-                            # Start response timing from this onset
-                            cue_time = trial_struct['response_on_flip']
-                            first_frame = False
-                        else:
-                            flip_with_pd()
+                        #     trial_struct['response_on_flip'] = flip_with_pd()
+                        #     # Start response timing from this onset
+                        #     cue_time = trial_struct['response_on_flip']
+                        #     first_frame = False
+                        # else:
+                        
+                        flip_with_pd()
 
                         # Check for key press
                         keys = event.getKeys(
